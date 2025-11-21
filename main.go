@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	_ "embed"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"net/http"
 	"os"
@@ -9,11 +13,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/Resavin/pr-reviewers/internal/config"
+	"github.com/Resavin/pr-reviewers/internal/controller"
+	"github.com/Resavin/pr-reviewers/internal/generated"
 )
+
+//go:embed api/openapi.yml
+var openapiSpec []byte
+
+//go:embed static/docs.html
+var swaggerHTML []byte
 
 func main() {
 	cfg := config.Load()
@@ -33,10 +42,22 @@ func main() {
 	log.Println("Successfully connected to database")
 
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	apiServer := controller.NewServer()
+	generated.HandlerFromMux(apiServer, r)
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("OK"))
 	})
 
+	r.Get("/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/x-yaml")
+		_, _ = w.Write(openapiSpec)
+	})
+
+	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(swaggerHTML)
+	})
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,
 		Handler: r,
