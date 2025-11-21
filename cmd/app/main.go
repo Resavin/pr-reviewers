@@ -11,16 +11,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Resavin/pr-reviewers/internal/config"
 )
 
 func main() {
-	dbURL := os.Getenv("DB_URL")
-	appPort := os.Getenv("APP_PORT")
+	cfg := config.Load()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, cfg.DBURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -33,16 +34,16 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	srv := &http.Server{
-		Addr:    ":" + appPort,
+		Addr:    ":" + cfg.AppPort,
 		Handler: r,
 	}
 
 	go func() {
-		log.Printf("Server starting on :%s\n", appPort)
+		log.Printf("Server starting on :%s\n", cfg.AppPort)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Listen: %s\n", err)
 		}
