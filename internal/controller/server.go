@@ -1,48 +1,26 @@
 package controller
 
 import (
-	"net/http"
-
 	"github.com/Resavin/pr-reviewers/internal/generated"
+	"github.com/Resavin/pr-reviewers/internal/service"
 )
 
-type Server struct{}
-
-// GetTeamGet implements generated.ServerInterface.
-func (s *Server) GetTeamGet(w http.ResponseWriter, r *http.Request, params generated.GetTeamGetParams) {
-	panic("unimplemented")
+type Server struct {
+	teamSvc service.TeamService
+	userSvc service.UserService
+	prSvc   service.PullRequestService
 }
 
-// PostTeamAdd implements generated.ServerInterface.
-func (s *Server) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
-	panic("unimplemented")
-}
+var _ generated.ServerInterface = (*Server)(nil)
 
-// GetUsersGetReview implements generated.ServerInterface.
-func (s *Server) GetUsersGetReview(w http.ResponseWriter, r *http.Request, params generated.GetUsersGetReviewParams) {
-	panic("unimplemented")
-}
-
-// PostPullRequestCreate implements generated.ServerInterface.
-func (s *Server) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) {
-	panic("unimplemented")
-}
-
-// PostPullRequestMerge implements generated.ServerInterface.
-func (s *Server) PostPullRequestMerge(w http.ResponseWriter, r *http.Request) {
-	panic("unimplemented")
-}
-
-// PostPullRequestReassign implements generated.ServerInterface.
-func (s *Server) PostPullRequestReassign(w http.ResponseWriter, r *http.Request) {
-	panic("unimplemented")
-}
-
-// PostUsersSetIsActive implements generated.ServerInterface.
-func (s *Server) PostUsersSetIsActive(w http.ResponseWriter, r *http.Request) {
-	panic("unimplemented")
-}
-
-func NewServer() *Server {
-	return &Server{}
+func NewServer(
+	teamSvc service.TeamService,
+	userSvc service.UserService,
+	prSvc service.PullRequestService,
+) *Server {
+	return &Server{
+		teamSvc: teamSvc,
+		userSvc: userSvc,
+		prSvc:   prSvc,
+	}
 }
