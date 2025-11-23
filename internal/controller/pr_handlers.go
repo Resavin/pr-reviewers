@@ -132,6 +132,34 @@ func (s *Server) PostPullRequestReassign(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, resp)
 }
 
+func (s *Server) GetPullRequestStats(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	prs, err := s.prSvc.PRStats(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, generated.NOTFOUND, "internal error")
+		return
+	}
+
+	resp := []struct {
+		PullRequestID string `json:"pull_request_id"`
+		Count         int64  `json:"count"`
+	}{}
+
+	for _, p := range prs {
+		resp = append(resp, struct {
+			PullRequestID string `json:"pull_request_id"`
+			Count         int64  `json:"count"`
+		}{
+			PullRequestID: p.PRID,
+			Count:         p.Count,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func toGeneratedPullRequest(pr domain.PullRequest, reviewers []string) generated.PullRequest {
 	createdAt := pr.CreatedAt
 	return generated.PullRequest{

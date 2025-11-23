@@ -391,6 +391,7 @@ paths:
                   value:
                     error: { code: NO_CANDIDATE, message: no active replacement candidate in team }
 
+
   /users/getReview:
     get:
       tags: [Users]
@@ -419,3 +420,67 @@ paths:
                     pull_request_name: Add search
                     author_id: u1
                     status: OPEN
+  /health:
+    get:
+      tags: [Health]
+      summary: Проверка доступности сервиса
+      responses:
+        '200':
+          description: Сервис доступен
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: OK
+
+  /users/stats:
+      get:
+        tags: [Users]
+        summary: Статистика назначений ревьюверов по пользователям
+        responses:
+          '200':
+            description: Количество назначений по пользователям
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    required: [user_id, count]
+                    properties:
+                      user_id:
+                        type: string
+                      count:
+                        type: integer
+                        format: int64
+                example:
+                  - user_id: u1
+                    count: 3
+                  - user_id: u2
+                    count: 5
+
+  /pullRequest/stats:
+    get:
+      tags: [PullRequests]
+      summary: Статистика назначений ревьюверов по PR
+      responses:
+        '200':
+          description: Количество назначений по PR
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [pull_request_id, count]
+                  properties:
+                    pull_request_id:
+                      type: string
+                    count:
+                      type: integer
+                      format: int64
+              example:
+                - pull_request_id: pr-1001
+                  count: 2
+                - pull_request_id: pr-1002
+                  count: 1

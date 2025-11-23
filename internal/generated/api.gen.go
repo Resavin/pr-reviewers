@@ -4,17 +4,10 @@
 package generated
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"fmt"
 	"net/http"
-	"net/url"
-	"path"
-	"strings"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
 )
@@ -158,6 +151,9 @@ type PostUsersSetIsActiveJSONRequestBody PostUsersSetIsActiveJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Проверка доступности сервиса
+	// (GET /health)
+	GetHealth(w http.ResponseWriter, r *http.Request)
 	// Создать PR и автоматически назначить до 2 ревьюверов из команды автора
 	// (POST /pullRequest/create)
 	PostPullRequestCreate(w http.ResponseWriter, r *http.Request)
@@ -167,6 +163,9 @@ type ServerInterface interface {
 	// Переназначить конкретного ревьювера на другого из его команды
 	// (POST /pullRequest/reassign)
 	PostPullRequestReassign(w http.ResponseWriter, r *http.Request)
+	// Статистика назначений ревьюверов по PR
+	// (GET /pullRequest/stats)
+	GetPullRequestStats(w http.ResponseWriter, r *http.Request)
 	// Создать команду с участниками (создаёт/обновляет пользователей)
 	// (POST /team/add)
 	PostTeamAdd(w http.ResponseWriter, r *http.Request)
@@ -179,11 +178,20 @@ type ServerInterface interface {
 	// Установить флаг активности пользователя
 	// (POST /users/setIsActive)
 	PostUsersSetIsActive(w http.ResponseWriter, r *http.Request)
+	// Статистика назначений ревьюверов по пользователям
+	// (GET /users/stats)
+	GetUsersStats(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Проверка доступности сервиса
+// (GET /health)
+func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Создать PR и автоматически назначить до 2 ревьюверов из команды автора
 // (POST /pullRequest/create)
@@ -200,6 +208,12 @@ func (_ Unimplemented) PostPullRequestMerge(w http.ResponseWriter, r *http.Reque
 // Переназначить конкретного ревьювера на другого из его команды
 // (POST /pullRequest/reassign)
 func (_ Unimplemented) PostPullRequestReassign(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Статистика назначений ревьюверов по PR
+// (GET /pullRequest/stats)
+func (_ Unimplemented) GetPullRequestStats(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -227,6 +241,12 @@ func (_ Unimplemented) PostUsersSetIsActive(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Статистика назначений ревьюверов по пользователям
+// (GET /users/stats)
+func (_ Unimplemented) GetUsersStats(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ServerInterfaceWrapper converts contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler            ServerInterface
@@ -235,6 +255,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetHealth operation middleware
+func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // PostPullRequestCreate operation middleware
 func (siw *ServerInterfaceWrapper) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +303,20 @@ func (siw *ServerInterfaceWrapper) PostPullRequestReassign(w http.ResponseWriter
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostPullRequestReassign(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPullRequestStats operation middleware
+func (siw *ServerInterfaceWrapper) GetPullRequestStats(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPullRequestStats(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -365,6 +413,20 @@ func (siw *ServerInterfaceWrapper) PostUsersSetIsActive(w http.ResponseWriter, r
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostUsersSetIsActive(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetUsersStats operation middleware
+func (siw *ServerInterfaceWrapper) GetUsersStats(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetUsersStats(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -488,6 +550,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/health", wrapper.GetHealth)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/pullRequest/create", wrapper.PostPullRequestCreate)
 	})
 	r.Group(func(r chi.Router) {
@@ -495,6 +560,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/pullRequest/reassign", wrapper.PostPullRequestReassign)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/pullRequest/stats", wrapper.GetPullRequestStats)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/team/add", wrapper.PostTeamAdd)
@@ -508,119 +576,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/users/setIsActive", wrapper.PostUsersSetIsActive)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users/stats", wrapper.GetUsersStats)
+	})
 
 	return r
-}
-
-// Base64 encoded, gzipped, json marshaled Swagger object
-var swaggerSpec = []string{
-
-	"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",
-	"bNPWWut/AQAA//80B9xs2CUAAA==",
-}
-
-// GetSwagger returns the content of the embedded swagger specification file
-// or error if failed to decode
-func decodeSpec() ([]byte, error) {
-	zipped, err := base64.StdEncoding.DecodeString(strings.Join(swaggerSpec, ""))
-	if err != nil {
-		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
-	}
-	zr, err := gzip.NewReader(bytes.NewReader(zipped))
-	if err != nil {
-		return nil, fmt.Errorf("error decompressing spec: %w", err)
-	}
-	var buf bytes.Buffer
-	_, err = buf.ReadFrom(zr)
-	if err != nil {
-		return nil, fmt.Errorf("error decompressing spec: %w", err)
-	}
-
-	return buf.Bytes(), nil
-}
-
-var rawSpec = decodeSpecCached()
-
-// a naive cached of a decoded swagger spec
-func decodeSpecCached() func() ([]byte, error) {
-	data, err := decodeSpec()
-	return func() ([]byte, error) {
-		return data, err
-	}
-}
-
-// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
-func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
-	res := make(map[string]func() ([]byte, error))
-	if len(pathToFile) > 0 {
-		res[pathToFile] = rawSpec
-	}
-
-	return res
-}
-
-// GetSwagger returns the Swagger specification corresponding to the generated code
-// in this file. The external references of Swagger specification are resolved.
-// The logic of resolving external references is tightly connected to "import-mapping" feature.
-// Externally referenced files must be embedded in the corresponding golang packages.
-// Urls can be supported but this task was out of the scope.
-func GetSwagger() (swagger *openapi3.T, err error) {
-	resolvePath := PathToRawSpec("")
-
-	loader := openapi3.NewLoader()
-	loader.IsExternalRefsAllowed = true
-	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
-		pathToFile := url.String()
-		pathToFile = path.Clean(pathToFile)
-		getSpec, ok := resolvePath[pathToFile]
-		if !ok {
-			err1 := fmt.Errorf("path not found: %s", pathToFile)
-			return nil, err1
-		}
-		return getSpec()
-	}
-	var specData []byte
-	specData, err = rawSpec()
-	if err != nil {
-		return
-	}
-	swagger, err = loader.LoadFromData(specData)
-	if err != nil {
-		return
-	}
-	return
 }

@@ -14,6 +14,11 @@ var (
 	ErrPRNotFound = errors.New("pull request not found")
 )
 
+type StatsByPR struct {
+	PRID  string
+	Count int64
+}
+
 type PullRequestRepository interface {
 	Exists(ctx context.Context, prID string) (bool, error)
 	Create(ctx context.Context, pr domain.PullRequest) error
@@ -22,6 +27,7 @@ type PullRequestRepository interface {
 	SetStatusMerged(ctx context.Context, prID string) (domain.PullRequest, []string, error)
 	ReplaceReviewer(ctx context.Context, prID, oldReviewerID, newReviewerID string) error
 	ListByReviewer(ctx context.Context, reviewerID string) ([]domain.PullRequest, error)
+	PRStats(ctx context.Context) (prs []StatsByPR, err error)
 }
 
 type prRepo struct {
@@ -221,6 +227,44 @@ func (r *prRepo) ListByReviewer(ctx context.Context, reviewerID string) ([]domai
 		prs = append(prs, pr)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return prs, nil
+}
+
+func (r *prRepo) PRStats(ctx context.Context) ([]StatsByPR, error) {
+	userRows, err := r.db.Query(ctx,
+		`SELECT reviewer_id, COUNT(*) 
+         FROM pull_request_reviewers 
+         GROUP BY reviewer_id 
+         ORDER BY reviewer_id`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer userRows.Close()
+
+	prRows, err := r.db.Query(ctx,
+		`SELECT pull_request_id, COUNT(*) 
+         FROM pull_request_reviewers 
+         GROUP BY pull_request_id 
+         ORDER BY pull_request_id`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer prRows.Close()
+
+	var prs []StatsByPR
+	for prRows.Next() {
+		var s StatsByPR
+		if err := prRows.Scan(&s.PRID, &s.Count); err != nil {
+			return nil, err
+		}
+		prs = append(prs, s)
+	}
+	if err := prRows.Err(); err != nil {
 		return nil, err
 	}
 

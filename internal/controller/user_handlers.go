@@ -89,6 +89,34 @@ func (s *Server) GetUsersGetReview(
 	writeJSON(w, http.StatusOK, resp)
 }
 
+func (s *Server) GetUsersStats(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	users, err := s.userSvc.UsersStats(ctx)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, generated.NOTFOUND, "internal error")
+		return
+	}
+
+	resp := []struct {
+		UserID string `json:"user_id"`
+		Count  int64  `json:"count"`
+	}{}
+
+	for _, u := range users {
+		resp = append(resp, struct {
+			UserID string `json:"user_id"`
+			Count  int64  `json:"count"`
+		}{
+			UserID: u.UserID,
+			Count:  u.Count,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func toGeneratedUser(u domain.User) generated.User {
 	return generated.User{
 		UserId:   u.UserID,

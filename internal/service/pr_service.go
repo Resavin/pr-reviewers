@@ -24,6 +24,7 @@ type PullRequestService interface {
 	Merge(ctx context.Context, prID string) (domain.PullRequest, []string, error)
 	Reassign(ctx context.Context, prID, oldReviewerID string) (domain.PullRequest, []string, string, error)
 	ListForReviewer(ctx context.Context, reviewerID string) ([]domain.PullRequest, error)
+	PRStats(ctx context.Context) ([]repository.StatsByPR, error)
 }
 
 type prService struct {
@@ -187,6 +188,14 @@ func (s *prService) ListForReviewer(
 	reviewerID string,
 ) ([]domain.PullRequest, error) {
 	return s.prRepo.ListByReviewer(ctx, reviewerID)
+}
+
+func (s *prService) PRStats(ctx context.Context) ([]repository.StatsByPR, error) {
+	prs, err := s.prRepo.PRStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return prs, nil
 }
 
 func pickRandomUpTo(ids []string, n int) []string {

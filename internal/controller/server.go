@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/Resavin/pr-reviewers/internal/generated"
 	"github.com/Resavin/pr-reviewers/internal/service"
+	"net/http"
 )
 
 type Server struct {
@@ -23,4 +24,9 @@ func NewServer(
 		userSvc: userSvc,
 		prSvc:   prSvc,
 	}
+}
+
+func (s *Server) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("OK"))
 }
