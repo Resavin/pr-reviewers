@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	ErrTeamExists   = errors.New("team already exists")
-	ErrTeamNotFound = errors.New("team not found")
+	ErrTeamExists            = errors.New("team already exists")
+	ErrTeamNotFound          = errors.New("team not found")
+	ErrNoCandidatesInNewTeam = errors.New("no active candidates in new team")
 )
 
 type TeamRepository interface {
@@ -54,7 +55,6 @@ func (r *teamRepo) UpsertMembers(ctx context.Context, teamName string, users []d
 	if err != nil {
 		return err
 	}
-	// rollback if not commited
 	defer func() {
 		if tx != nil {
 			_ = tx.Rollback(ctx)

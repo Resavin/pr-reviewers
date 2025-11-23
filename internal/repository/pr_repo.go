@@ -28,6 +28,21 @@ type PullRequestRepository interface {
 	ReplaceReviewer(ctx context.Context, prID, oldReviewerID, newReviewerID string) error
 	ListByReviewer(ctx context.Context, reviewerID string) ([]domain.PullRequest, error)
 	PRStats(ctx context.Context) (prs []StatsByPR, err error)
+	FindOpenAssignmentsForUsers(ctx context.Context, userIDs []string) ([]Assignment, error)
+	BulkReassignReviewers(ctx context.Context, changes []ReassignChange) (int, error)
+}
+
+type Assignment struct {
+	PullRequestID string
+	ReviewerID    string
+	AuthorID      string
+	TeamName      string
+}
+
+type ReassignChange struct {
+	PullRequestID string
+	OldReviewerID string
+	NewReviewerID string
 }
 
 type prRepo struct {
@@ -269,4 +284,60 @@ func (r *prRepo) PRStats(ctx context.Context) ([]StatsByPR, error) {
 	}
 
 	return prs, nil
+}
+
+func (r *prRepo) FindOpenAssignmentsForUsers(ctx context.Context, userIDs []string) ([]Assignment, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT prr.pull_request_id, prr.reviewer_id, pr.author_id, u.team_name
+         FROM pull_request_reviewers prr
+         JOIN pull_requests pr ON prr.pull_request_id = pr.pull_request_id
+         JOIN users u ON pr.author_id = u.user_id
+         WHERE prr.reviewer_id = ANY($1)
+           AND pr.status = 'OPEN'`,
+		userIDs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []Assignment
+	for rows.Next() {
+		var a Assignment
+		if err := rows.Scan(&a.PullRequestID, &a.ReviewerID, &a.AuthorID, &a.TeamName); err != nil {
+			return nil, err
+		}
+		res = append(res, a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+func (r *prRepo) BulkReassignReviewers(ctx context.Context, changes []ReassignChange) (int, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	reassigned := 0
+	for _, ch := range changes {
+		cmd, err := tx.Exec(ctx,
+			`UPDATE pull_request_reviewers
+             SET reviewer_id = $3
+             WHERE pull_request_id = $1 AND reviewer_id = $2`,
+			ch.PullRequestID, ch.OldReviewerID, ch.NewReviewerID,
+		)
+		if err != nil {
+			return 0, err
+		}
+		reassigned += int(cmd.RowsAffected())
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return reassigned, nil
 }

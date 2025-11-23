@@ -49,9 +49,10 @@ func main() {
 	userRepo := repository.NewUserRepository(pool)
 	prRepo := repository.NewPullRequestRepository(pool)
 
-	teamSvc := service.NewTeamService(teamRepo)
 	userSvc := service.NewUserService(userRepo)
+	// maybe not so good
 	prSvc := service.NewPullRequestService(prRepo, userRepo)
+	teamSvc := service.NewTeamService(teamRepo, userSvc, prSvc)
 
 	apiServer := controller.NewServer(teamSvc, userSvc, prSvc)
 

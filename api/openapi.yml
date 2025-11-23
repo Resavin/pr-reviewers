@@ -484,3 +484,58 @@ paths:
                   count: 2
                 - pull_request_id: pr-1002
                   count: 1
+
+  /team/deactivate:
+    post:
+      tags: [Teams]
+      summary: Массовая деактивация пользователей команды и переназначение их PR на новую команду
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from_team_name, to_team_name]
+              properties:
+                from_team_name:
+                  type: string
+                to_team_name:
+                  type: string
+            example:
+              from_team_name: backend
+              to_team_name: reviewers
+      responses:
+        '200':
+          description: Операция выполнена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from_team_name:
+                    type: string
+                  to_team_name:
+                    type: string
+                  deactivated_users:
+                    type: array
+                    items:
+                      type: string
+                  reassigned_reviewers:
+                    type: integer
+        '404':
+          description: Одна из команд не найдена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Невозможно переназначить ревью на новую команду
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                noCandidateInNewTeam:
+                  summary: В новой команде нет активных людей
+                  value:
+                    error:
+                      code: NO_CANDIDATE
+                      message: no active candidates in new team

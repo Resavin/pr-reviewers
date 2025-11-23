@@ -24,6 +24,8 @@ type UserRepository interface {
 	SetIsActive(ctx context.Context, userID string, isActive bool) (domain.User, error)
 	ListByTeam(ctx context.Context, teamName string) ([]domain.User, error)
 	UsersStats(ctx context.Context) ([]StatsByUser, error)
+	DeactivateByTeam(ctx context.Context, teamName string) ([]string, error)
+	ActiveByTeamExcept(ctx context.Context, teamName string, exclude []string) ([]string, error)
 }
 
 type userRepo struct {
@@ -125,4 +127,60 @@ func (r *userRepo) UsersStats(ctx context.Context) ([]StatsByUser, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+func (r *userRepo) DeactivateByTeam(ctx context.Context, teamName string) ([]string, error) {
+	rows, err := r.db.Query(ctx,
+		`UPDATE users
+         SET is_active = FALSE
+         WHERE team_name = $1 AND is_active = TRUE
+         RETURNING user_id`,
+		teamName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
+func (r *userRepo) ActiveByTeamExcept(ctx context.Context, teamName string, exclude []string) ([]string, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT user_id
+         FROM users
+         WHERE team_name = $1 AND is_active = TRUE
+           AND user_id <> ALL($2)
+         ORDER BY user_id`,
+		teamName,
+		exclude,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return ids, nil
 }

@@ -116,6 +116,11 @@ type PostPullRequestReassignJSONBody struct {
 	PullRequestId string `json:"pull_request_id"`
 }
 
+// PostTeamDeactivateJSONBody defines parameters for PostTeamDeactivate.
+type PostTeamDeactivateJSONBody struct {
+	TeamName string `json:"team_name"`
+}
+
 // GetTeamGetParams defines parameters for GetTeamGet.
 type GetTeamGetParams struct {
 	// TeamName Уникальное имя команды
@@ -146,6 +151,9 @@ type PostPullRequestReassignJSONRequestBody PostPullRequestReassignJSONBody
 // PostTeamAddJSONRequestBody defines body for PostTeamAdd for application/json ContentType.
 type PostTeamAddJSONRequestBody = Team
 
+// PostTeamDeactivateJSONRequestBody defines body for PostTeamDeactivate for application/json ContentType.
+type PostTeamDeactivateJSONRequestBody PostTeamDeactivateJSONBody
+
 // PostUsersSetIsActiveJSONRequestBody defines body for PostUsersSetIsActive for application/json ContentType.
 type PostUsersSetIsActiveJSONRequestBody PostUsersSetIsActiveJSONBody
 
@@ -169,6 +177,9 @@ type ServerInterface interface {
 	// Создать команду с участниками (создаёт/обновляет пользователей)
 	// (POST /team/add)
 	PostTeamAdd(w http.ResponseWriter, r *http.Request)
+	// Массовая деактивация пользователей команды и безопасная переназначаемость открытых PR
+	// (POST /team/deactivate)
+	PostTeamDeactivate(w http.ResponseWriter, r *http.Request)
 	// Получить команду с участниками
 	// (GET /team/get)
 	GetTeamGet(w http.ResponseWriter, r *http.Request, params GetTeamGetParams)
@@ -220,6 +231,12 @@ func (_ Unimplemented) GetPullRequestStats(w http.ResponseWriter, r *http.Reques
 // Создать команду с участниками (создаёт/обновляет пользователей)
 // (POST /team/add)
 func (_ Unimplemented) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Массовая деактивация пользователей команды и безопасная переназначаемость открытых PR
+// (POST /team/deactivate)
+func (_ Unimplemented) PostTeamDeactivate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -331,6 +348,20 @@ func (siw *ServerInterfaceWrapper) PostTeamAdd(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostTeamAdd(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostTeamDeactivate operation middleware
+func (siw *ServerInterfaceWrapper) PostTeamDeactivate(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostTeamDeactivate(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -566,6 +597,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/team/add", wrapper.PostTeamAdd)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/team/deactivate", wrapper.PostTeamDeactivate)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/team/get", wrapper.GetTeamGet)

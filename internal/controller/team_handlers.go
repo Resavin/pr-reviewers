@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -89,6 +90,50 @@ func toGeneratedTeam(t domain.Team, users []domain.User) generated.Team {
 		TeamName: t.TeamName,
 		Members:  members,
 	}
+}
+
+func (s *Server) PostTeamDeactivate(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		FromTeamName string `json:"from_team_name"`
+		ToTeamName   string `json:"to_team_name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil ||
+		body.FromTeamName == "" || body.ToTeamName == "" {
+		writeError(w, http.StatusBadRequest, generated.NOTFOUND, "from_team_name and to_team_name are required")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	from, to, deactivated, reassigned, err := s.teamSvc.DeactivateTeamAndReassign(ctx, body.FromTeamName, body.ToTeamName)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrTeamNotFound):
+			writeError(w, http.StatusNotFound, generated.NOTFOUND, "team not found")
+			return
+		case errors.Is(err, repository.ErrNoCandidatesInNewTeam):
+			writeError(w, http.StatusConflict, generated.NOCANDIDATE, "no active candidates in new team")
+			return
+		default:
+			writeError(w, http.StatusInternalServerError, generated.NOTFOUND, "internal error")
+			return
+		}
+	}
+
+	resp := struct {
+		FromTeamName        string   `json:"from_team_name"`
+		ToTeamName          string   `json:"to_team_name"`
+		DeactivatedUsers    []string `json:"deactivated_users"`
+		ReassignedReviewers int      `json:"reassigned_reviewers"`
+	}{
+		FromTeamName:        from,
+		ToTeamName:          to,
+		DeactivatedUsers:    deactivated,
+		ReassignedReviewers: reassigned,
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func writeError(w http.ResponseWriter, status int, code generated.ErrorResponseErrorCode, msg string) {
