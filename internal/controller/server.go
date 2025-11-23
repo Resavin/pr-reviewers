@@ -1,9 +1,10 @@
 package controller
 
 import (
+	"net/http"
+
 	"github.com/Resavin/pr-reviewers/internal/generated"
 	"github.com/Resavin/pr-reviewers/internal/service"
-	"net/http"
 )
 
 type Server struct {

@@ -84,7 +84,10 @@ SET username = EXCLUDED.username,
 	return nil
 }
 
-func (r *teamRepo) GetTeamWithMembers(ctx context.Context, name string) (domain.Team, []domain.User, error) {
+func (r *teamRepo) GetTeamWithMembers(
+	ctx context.Context,
+	name string,
+) (domain.Team, []domain.User, error) {
 	var t domain.Team
 
 	err := r.db.QueryRow(ctx,

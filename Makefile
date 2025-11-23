@@ -11,3 +11,9 @@ oapi-gen:
 
 loadtest:
 	k6 run loadtest/k6_loadtest.js
+
+lint:
+	golangci-lint run
+
+fmt:
+	golangci-lint fmt

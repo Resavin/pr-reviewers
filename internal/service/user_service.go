@@ -27,7 +27,11 @@ func (s *userService) GetUser(ctx context.Context, userID string) (domain.User, 
 	return s.userRepo.GetByID(ctx, userID)
 }
 
-func (s *userService) SetIsActive(ctx context.Context, userID string, isActive bool) (domain.User, error) {
+func (s *userService) SetIsActive(
+	ctx context.Context,
+	userID string,
+	isActive bool,
+) (domain.User, error) {
 	return s.userRepo.SetIsActive(ctx, userID, isActive)
 }
 
@@ -43,6 +47,10 @@ func (s *userService) DeactivateByTeam(ctx context.Context, teamName string) ([]
 	return s.userRepo.DeactivateByTeam(ctx, teamName)
 }
 
-func (s *userService) ActiveByTeamExcept(ctx context.Context, teamName string, exclude []string) ([]string, error) {
+func (s *userService) ActiveByTeamExcept(
+	ctx context.Context,
+	teamName string,
+	exclude []string,
+) ([]string, error) {
 	return s.userRepo.ActiveByTeamExcept(ctx, teamName, exclude)
 }

@@ -108,7 +108,10 @@ ON CONFLICT (pull_request_id, reviewer_id) DO NOTHING
 	return nil
 }
 
-func (r *prRepo) GetWithReviewers(ctx context.Context, prID string) (domain.PullRequest, []string, error) {
+func (r *prRepo) GetWithReviewers(
+	ctx context.Context,
+	prID string,
+) (domain.PullRequest, []string, error) {
 	var pr domain.PullRequest
 
 	err := r.db.QueryRow(ctx,
@@ -152,7 +155,10 @@ func (r *prRepo) GetWithReviewers(ctx context.Context, prID string) (domain.Pull
 }
 
 // duplicate calls return current status (idempotent)
-func (r *prRepo) SetStatusMerged(ctx context.Context, prID string) (domain.PullRequest, []string, error) {
+func (r *prRepo) SetStatusMerged(
+	ctx context.Context,
+	prID string,
+) (domain.PullRequest, []string, error) {
 	var pr domain.PullRequest
 
 	err := r.db.QueryRow(ctx,
@@ -197,7 +203,10 @@ func (r *prRepo) SetStatusMerged(ctx context.Context, prID string) (domain.PullR
 	return pr, reviewers, nil
 }
 
-func (r *prRepo) ReplaceReviewer(ctx context.Context, prID, oldReviewerID, newReviewerID string) error {
+func (r *prRepo) ReplaceReviewer(
+	ctx context.Context,
+	prID, oldReviewerID, newReviewerID string,
+) error {
 	cmdTag, err := r.db.Exec(ctx,
 		`UPDATE pull_request_reviewers
          SET reviewer_id = $3
@@ -213,7 +222,10 @@ func (r *prRepo) ReplaceReviewer(ctx context.Context, prID, oldReviewerID, newRe
 	return nil
 }
 
-func (r *prRepo) ListByReviewer(ctx context.Context, reviewerID string) ([]domain.PullRequest, error) {
+func (r *prRepo) ListByReviewer(
+	ctx context.Context,
+	reviewerID string,
+) ([]domain.PullRequest, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT p.pull_request_id,
                 p.pull_request_name,
@@ -286,7 +298,10 @@ func (r *prRepo) PRStats(ctx context.Context) ([]StatsByPR, error) {
 	return prs, nil
 }
 
-func (r *prRepo) FindOpenAssignmentsForUsers(ctx context.Context, userIDs []string) ([]Assignment, error) {
+func (r *prRepo) FindOpenAssignmentsForUsers(
+	ctx context.Context,
+	userIDs []string,
+) ([]Assignment, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT prr.pull_request_id, prr.reviewer_id, pr.author_id, u.team_name
          FROM pull_request_reviewers prr
@@ -320,7 +335,11 @@ func (r *prRepo) BulkReassignReviewers(ctx context.Context, changes []ReassignCh
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		}
+	}()
 
 	reassigned := 0
 	for _, ch := range changes {

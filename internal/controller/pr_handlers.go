@@ -19,14 +19,24 @@ func (s *Server) PostPullRequestCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.PullRequestId == "" || body.PullRequestName == "" || body.AuthorId == "" {
-		writeError(w, http.StatusBadRequest, generated.NOTFOUND, "pull_request_id, pull_request_name and author_id are required")
+		writeError(
+			w,
+			http.StatusBadRequest,
+			generated.NOTFOUND,
+			"pull_request_id, pull_request_name and author_id are required",
+		)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	pr, reviewers, err := s.prSvc.Create(ctx, body.PullRequestId, body.PullRequestName, body.AuthorId)
+	pr, reviewers, err := s.prSvc.Create(
+		ctx,
+		body.PullRequestId,
+		body.PullRequestName,
+		body.AuthorId,
+	)
 	if err != nil {
 		switch err {
 		case service.ErrPRExists:
@@ -93,7 +103,12 @@ func (s *Server) PostPullRequestReassign(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if body.PullRequestId == "" || body.OldUserId == "" {
-		writeError(w, http.StatusBadRequest, generated.NOTFOUND, "pull_request_id and old_user_id are required")
+		writeError(
+			w,
+			http.StatusBadRequest,
+			generated.NOTFOUND,
+			"pull_request_id and old_user_id are required",
+		)
 		return
 	}
 
@@ -110,10 +125,20 @@ func (s *Server) PostPullRequestReassign(w http.ResponseWriter, r *http.Request)
 			writeError(w, http.StatusConflict, generated.PRMERGED, "cannot reassign on merged PR")
 			return
 		case service.ErrReviewerNotAssigned:
-			writeError(w, http.StatusConflict, generated.NOTASSIGNED, "reviewer is not assigned to this PR")
+			writeError(
+				w,
+				http.StatusConflict,
+				generated.NOTASSIGNED,
+				"reviewer is not assigned to this PR",
+			)
 			return
 		case service.ErrNoCandidate:
-			writeError(w, http.StatusConflict, generated.NOCANDIDATE, "no active replacement candidate in team")
+			writeError(
+				w,
+				http.StatusConflict,
+				generated.NOCANDIDATE,
+				"no active replacement candidate in team",
+			)
 			return
 		default:
 			writeError(w, http.StatusInternalServerError, generated.NOTFOUND, "internal error")

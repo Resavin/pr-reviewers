@@ -22,10 +22,16 @@ var (
 type PullRequestService interface {
 	Create(ctx context.Context, prID, name, authorID string) (domain.PullRequest, []string, error)
 	Merge(ctx context.Context, prID string) (domain.PullRequest, []string, error)
-	Reassign(ctx context.Context, prID, oldReviewerID string) (domain.PullRequest, []string, string, error)
+	Reassign(
+		ctx context.Context,
+		prID, oldReviewerID string,
+	) (domain.PullRequest, []string, string, error)
 	ListForReviewer(ctx context.Context, reviewerID string) ([]domain.PullRequest, error)
 	PRStats(ctx context.Context) ([]repository.StatsByPR, error)
-	FindOpenAssignmentsForUsers(ctx context.Context, userIDs []string) ([]repository.Assignment, error)
+	FindOpenAssignmentsForUsers(
+		ctx context.Context,
+		userIDs []string,
+	) ([]repository.Assignment, error)
 	BulkReassignReviewers(ctx context.Context, changes []repository.ReassignChange) (int, error)
 }
 
@@ -200,11 +206,17 @@ func (s *prService) PRStats(ctx context.Context) ([]repository.StatsByPR, error)
 	return prs, nil
 }
 
-func (s *prService) FindOpenAssignmentsForUsers(ctx context.Context, userIDs []string) ([]repository.Assignment, error) {
+func (s *prService) FindOpenAssignmentsForUsers(
+	ctx context.Context,
+	userIDs []string,
+) ([]repository.Assignment, error) {
 	return s.prRepo.FindOpenAssignmentsForUsers(ctx, userIDs)
 }
 
-func (s *prService) BulkReassignReviewers(ctx context.Context, changes []repository.ReassignChange) (int, error) {
+func (s *prService) BulkReassignReviewers(
+	ctx context.Context,
+	changes []repository.ReassignChange,
+) (int, error) {
 	return s.prRepo.BulkReassignReviewers(ctx, changes)
 }
 

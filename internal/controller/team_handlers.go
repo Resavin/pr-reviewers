@@ -55,7 +55,11 @@ func (s *Server) PostTeamAdd(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, resp)
 }
 
-func (s *Server) GetTeamGet(w http.ResponseWriter, r *http.Request, params generated.GetTeamGetParams) {
+func (s *Server) GetTeamGet(
+	w http.ResponseWriter,
+	r *http.Request,
+	params generated.GetTeamGetParams,
+) {
 	if params.TeamName == "" {
 		writeError(w, http.StatusBadRequest, generated.NOTFOUND, "team_name is required")
 		return
@@ -99,21 +103,35 @@ func (s *Server) PostTeamDeactivate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil ||
 		body.FromTeamName == "" || body.ToTeamName == "" {
-		writeError(w, http.StatusBadRequest, generated.NOTFOUND, "from_team_name and to_team_name are required")
+		writeError(
+			w,
+			http.StatusBadRequest,
+			generated.NOTFOUND,
+			"from_team_name and to_team_name are required",
+		)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 100*time.Millisecond)
 	defer cancel()
 
-	from, to, deactivated, reassigned, err := s.teamSvc.DeactivateTeamAndReassign(ctx, body.FromTeamName, body.ToTeamName)
+	from, to, deactivated, reassigned, err := s.teamSvc.DeactivateTeamAndReassign(
+		ctx,
+		body.FromTeamName,
+		body.ToTeamName,
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, repository.ErrTeamNotFound):
 			writeError(w, http.StatusNotFound, generated.NOTFOUND, "team not found")
 			return
 		case errors.Is(err, repository.ErrNoCandidatesInNewTeam):
-			writeError(w, http.StatusConflict, generated.NOCANDIDATE, "no active candidates in new team")
+			writeError(
+				w,
+				http.StatusConflict,
+				generated.NOCANDIDATE,
+				"no active candidates in new team",
+			)
 			return
 		default:
 			writeError(w, http.StatusInternalServerError, generated.NOTFOUND, "internal error")
@@ -136,7 +154,12 @@ func (s *Server) PostTeamDeactivate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func writeError(w http.ResponseWriter, status int, code generated.ErrorResponseErrorCode, msg string) {
+func writeError(
+	w http.ResponseWriter,
+	status int,
+	code generated.ErrorResponseErrorCode,
+	msg string,
+) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(generated.ErrorResponse{

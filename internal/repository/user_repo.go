@@ -55,7 +55,11 @@ func (r *userRepo) GetByID(ctx context.Context, userID string) (domain.User, err
 	return u, nil
 }
 
-func (r *userRepo) SetIsActive(ctx context.Context, userID string, isActive bool) (domain.User, error) {
+func (r *userRepo) SetIsActive(
+	ctx context.Context,
+	userID string,
+	isActive bool,
+) (domain.User, error) {
 	var u domain.User
 
 	err := r.db.QueryRow(ctx,
@@ -156,7 +160,11 @@ func (r *userRepo) DeactivateByTeam(ctx context.Context, teamName string) ([]str
 	return ids, nil
 }
 
-func (r *userRepo) ActiveByTeamExcept(ctx context.Context, teamName string, exclude []string) ([]string, error) {
+func (r *userRepo) ActiveByTeamExcept(
+	ctx context.Context,
+	teamName string,
+	exclude []string,
+) ([]string, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT user_id
          FROM users

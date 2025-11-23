@@ -9,9 +9,16 @@ import (
 )
 
 type TeamService interface {
-	CreateOrReplaceTeam(ctx context.Context, teamName string, members []domain.User) (domain.Team, []domain.User, error)
+	CreateOrReplaceTeam(
+		ctx context.Context,
+		teamName string,
+		members []domain.User,
+	) (domain.Team, []domain.User, error)
 	GetTeam(ctx context.Context, teamName string) (domain.Team, []domain.User, error)
-	DeactivateTeamAndReassign(ctx context.Context, fromTeam, toTeam string) (from string, to string, deactivated []string, reassigned int, err error)
+	DeactivateTeamAndReassign(
+		ctx context.Context,
+		fromTeam, toTeam string,
+	) (from string, to string, deactivated []string, reassigned int, err error)
 }
 
 type teamService struct {
@@ -20,7 +27,11 @@ type teamService struct {
 	prSvc    PullRequestService
 }
 
-func NewTeamService(teamRepo repository.TeamRepository, userSvc UserService, prSvc PullRequestService) TeamService {
+func NewTeamService(
+	teamRepo repository.TeamRepository,
+	userSvc UserService,
+	prSvc PullRequestService,
+) TeamService {
 	return &teamService{
 		teamRepo: teamRepo,
 		userSvc:  userSvc,
@@ -52,7 +63,10 @@ func (s *teamService) CreateOrReplaceTeam(
 	return team, users, nil
 }
 
-func (s *teamService) GetTeam(ctx context.Context, teamName string) (domain.Team, []domain.User, error) {
+func (s *teamService) GetTeam(
+	ctx context.Context,
+	teamName string,
+) (domain.Team, []domain.User, error) {
 	return s.teamRepo.GetTeamWithMembers(ctx, teamName)
 }
 
