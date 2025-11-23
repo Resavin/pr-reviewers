@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Trend, Rate } from 'k6/metrics';
 
-const BASE_URL = 'http:
+const BASE_URL = 'http://localhost:8080';
 
 
 export const latency = new Trend('http_req_duration_ms');
