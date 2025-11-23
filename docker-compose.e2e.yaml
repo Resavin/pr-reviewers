@@ -1,0 +1,42 @@
+name: pr-reviewers-e2e
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pr_e2e
+      POSTGRES_PASSWORD: pr_e2e
+      POSTGRES_DB: pr_e2e
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pr_e2e -d pr_e2e"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_e2e_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+  app:
+    build: .
+    environment:
+      - DB_URL=postgres://pr_e2e:pr_e2e@db:5432/pr_e2e?sslmode=disable
+      - APP_PORT=8081
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  e2e:
+    image: grafana/k6:latest
+    depends_on:
+      app:
+        condition: service_started
+    working_dir: /e2e
+    volumes:
+      - ./e2e:/e2e
+    environment:
+      BASE_URL: http://app:8081
+    command: ["run", "k6_scenario.js"]
+
+volumes:
+  postgres_e2e_data:
